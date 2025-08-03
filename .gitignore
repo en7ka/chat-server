@@ -1,0 +1,5 @@
+/bin/protoc-gen-go
+/bin/protoc-gen-go-grpc
+/bin/protoc-gen-validate
+
+.idea/
