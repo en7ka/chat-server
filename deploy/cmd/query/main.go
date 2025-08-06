@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"log"
 	"time"
 
@@ -28,8 +27,8 @@ func main() {
 	//делаем запрос на вставку
 	builderInsert := sq.Insert("data").
 		PlaceholderFormat(sq.Dollar).
-		Columns("title", "body").
-		Values(gofakeit.City(), gofakeit.Address().Street).
+		Columns("username", "email").
+		Values(gofakeit.Name(), gofakeit.Email()).
 		Suffix("RETURNING id")
 
 	query, args, err := builderInsert.ToSql()
@@ -47,7 +46,7 @@ func main() {
 	log.Printf("note id: %d", noteId)
 
 	//делаем запрос на выборку
-	builderSelect := sq.Select("id", "title", "body", "created_at", "updated_at").
+	builderSelect := sq.Select("id", "username", "email", "created_at").
 		From("data").
 		PlaceholderFormat(sq.Dollar).
 		Limit(10)
@@ -63,24 +62,23 @@ func main() {
 	}
 
 	var id int
-	var title, body string
+	var username, email string
 	var createdAt time.Time
-	var updatedAt sql.NullTime
 
 	for rows.Next() {
-		err = rows.Scan(&id, &title, &body, &createdAt, &updatedAt)
+		err = rows.Scan(&id, &username, &email, &createdAt)
 		if err != nil {
 			log.Fatalf("failed to scan row: %v", err)
 		}
-		log.Printf("id: %d, title: %s, body: %s, created_at: %s, updated_at: %v", id, title, body, createdAt, updatedAt)
+		log.Printf("id: %d, username: %s, email: %s, created_at: %s", id, username, email, createdAt)
 	}
 
 	//делаем записи на обновление данных
 	builderUpdate := sq.Update("data").
 		PlaceholderFormat(sq.Dollar).
-		Set("title", gofakeit.City()).
-		Set("body", gofakeit.Address().Street).
-		Set("updated_at", time.Now()).
+		Set("username", gofakeit.Name()).
+		Set("email", gofakeit.Email()).
+		Set("created_at", time.Now()).
 		Where(sq.Eq{"id": noteId})
 
 	query, args, err = builderUpdate.ToSql()
