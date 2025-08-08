@@ -5,26 +5,27 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync/atomic"
 	"time"
 
-	desc "github.com/aKaich/chat-server/pkg/chat_v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"google.golang.org/protobuf/types/known/emptypb"
+
+	desc "github.com/en7ka/chat-server/pkg/chat_v1"
 )
 
 const grpcPort = 50052
 
 type server struct {
-	desc.UnimplementedChatV1Server
+	desc.UnimplementedChatAPIServer
 }
+
+var nextID int64
 
 func (s *server) Create(ctx context.Context, req *desc.CreateRequest) (*desc.CreateResponse, error) {
 	log.Printf("Received Create chat request for users: %v", req.GetUsernames())
-
-	return &desc.CreateResponse{
-		Id: req.GetId(),
-	}, nil
+	id := atomic.AddInt64(&nextID, 1)
+	return &desc.CreateResponse{Id: id}, nil
 }
 
 func (s *server) Delete(ctx context.Context, req *desc.DeleteRequest) (*emptypb.Empty, error) {
@@ -34,13 +35,7 @@ func (s *server) Delete(ctx context.Context, req *desc.DeleteRequest) (*emptypb.
 }
 
 func (s *server) SendMessage(ctx context.Context, req *desc.SendMessageRequest) (*emptypb.Empty, error) {
-	log.Printf(
-		"Received SendMessage request: From=%s, Text=%s, Timestamp=%v",
-		req.GetFrom(),
-		req.GetText(),
-		req.GetTimestamp().AsTime().Format(time.RFC3339),
-	)
-
+	log.Printf("SendMessage from=%s text=%s time=%s", req.GetFrom(), req.GetText(), req.GetTime().AsTime().Format(time.RFC3339))
 	return &emptypb.Empty{}, nil
 }
 
@@ -51,7 +46,8 @@ func main() {
 	}
 
 	s := grpc.NewServer()
-	desc.RegisterChatV1Server(s, &server{})
+
+	desc.RegisterChatAPIServer(s, &server{})
 	reflection.Register(s)
 
 	log.Printf("Starting gRPC server on port %d", grpcPort)
