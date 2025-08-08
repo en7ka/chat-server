@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
 	"net"
 	"sync/atomic"
 	"time"
-	"google.golang.org/protobuf/types/known/emptypb"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 
 	desc "github.com/en7ka/chat-server/pkg/chat_v1"
 )
