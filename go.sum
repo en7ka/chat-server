@@ -3,8 +3,8 @@ github.com/Masterminds/squirrel v1.5.4/go.mod h1:NNaOrjSoIDfDA40n7sr2tPNZRfjzjA4
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/en7ka/auth v0.0.0-20250809154312-2324da12facd h1:ja1Z+cMR1NKglzJPhr9fwBOE4VgCA/Wsh+mzRwb2sNk=
-github.com/en7ka/auth v0.0.0-20250809154312-2324da12facd/go.mod h1:dyK53iNj8nxzvv3OVifLNGES86WQsT5lu0YFY0I1PA0=
+github.com/en7ka/auth v0.0.0-20250810182716-999d55dd99c5 h1:CtQ/DwWTgJhBDXYE36M5z2hRASFgtHZmtFNYeGhnwx0=
+github.com/en7ka/auth v0.0.0-20250810182716-999d55dd99c5/go.mod h1:dyK53iNj8nxzvv3OVifLNGES86WQsT5lu0YFY0I1PA0=
 github.com/go-logr/logr v1.4.3 h1:CjnDlHq8ikf6E492q6eKboGOC0T8CDaOvkHCIg8idEI=
 github.com/go-logr/logr v1.4.3/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
 github.com/go-logr/stdr v1.2.2 h1:hSWxHoqTgW2S2qGc0LTAI563KZ5YKYRhT3MFKZMbjag=

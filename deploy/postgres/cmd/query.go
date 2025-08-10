@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	dbDSN = "host=localhost port=5433 dbname=users user=data-user password=note-password sslmode=disable"
+	dbDSN = "host=localhost port=5433 dbname=chat_db user=data-user password=note-password sslmode=disable"
 )
 
 type PostgresConfig struct {

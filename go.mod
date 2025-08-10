@@ -4,7 +4,7 @@ go 1.24.3
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
-	github.com/en7ka/auth v0.0.0-20250809154312-2324da12facd
+	github.com/en7ka/auth v0.0.0-20250810182716-999d55dd99c5
 	github.com/jackc/pgx/v5 v5.7.5
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.7
