@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	dbDSN = "host=localhost port=5433 dbname=chat_db user=data-user password=note-password sslmode=disable"
+	dbDSN = "DEFAULT_DSN"
 )
 
 type PostgresConfig struct {
@@ -20,8 +20,9 @@ type PostgresConfig struct {
 func InitPostgresConfig() *PostgresConfig {
 	con, err := pgx.Connect(context.Background(), dbDSN)
 	if err != nil {
-		log.Fatal("ошибка подключения к бд", err)
+		log.Fatalf("ошибка подключения к бд: %v", err)
 	}
+
 	return &PostgresConfig{con: *con}
 }
 
@@ -29,7 +30,7 @@ func InitPostgresConfig() *PostgresConfig {
 func (s *PostgresConfig) CloseCon() {
 	err := s.con.Close(context.Background())
 	if err != nil {
-		log.Fatal("ошибка в закрытии бд", err)
+		log.Printf("ошибка в закрытии бд: %v", err)
 	}
 }
 
@@ -90,22 +91,20 @@ func (s *PostgresConfig) DeleteChat(chatID int64) error {
 // реализация SendMessage
 func (s *PostgresConfig) SendMessageChat(message Message) error {
 	ctx := context.Background()
-	var chatIsDeleted bool
+	insertQuery := `
+			INSERT INTO chat.chat_members
+			SELECT $1, $2, $3
+			FROM chat.chats
+			WHERE id = $1 AND is_deleted = FALSE`
 
-	delBl := "SELECT is_deleted FROM chat.chats WHERE id = $1"
-	if err := s.con.QueryRow(ctx, delBl, message.ChatID).Scan(&chatIsDeleted); err != nil {
-		return fmt.Errorf("ошибка при проверке чата с id %d: %w", message.ChatID, err)
-	}
-
-	if chatIsDeleted {
-		return fmt.Errorf("чат с id %d удален", message.ChatID)
-	}
-
-	insertQuery := "INSERT INTO chat.messages (chat_id, from_user_id, text) VALUES ($1, $2, $3)"
-	_, err := s.con.Exec(ctx, insertQuery, message.ChatID, message.FromUID, message.Body)
+	com, err := s.con.Exec(ctx, insertQuery, message.ChatID, message.FromUID, message.Body)
 	if err != nil {
 		log.Printf("Ошибка при отправке сообщения в чат %d: %v", message.ChatID, err)
 		return fmt.Errorf("ошибка при отправке сообщения: %w", err)
+	}
+	//проверяем была ли вставлена хоть одна строка
+	if com.RowsAffected() == 0 {
+		return fmt.Errorf("не удалось отправить сообщение в чат %d: чат не найден или удален", message.ChatID)
 	}
 	log.Printf("Пользователь %s отправил сообщение %s в чат %d", message.From, message.Body, message.ChatID)
 

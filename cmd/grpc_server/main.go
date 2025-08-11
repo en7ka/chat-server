@@ -54,18 +54,25 @@ type server struct {
 func (s *server) Create(ctx context.Context, req *chatv1.CreateRequest) (*chatv1.CreateResponse, error) {
 	log.Printf("Users: %v", req.GetUsernames())
 
-	userIDs := make(cmd.IDs, 0, len(req.GetUsernames()))
-	for _, username := range req.GetUsernames() {
-		resp, err := s.authClient.GetByUsername(ctx, &userv1.GetByUsernameRequest{
-			Username: username,
-		})
-		if err != nil {
-			log.Printf("Ошибка при получении ID пользователя %s: %v", username, err)
-			return nil, fmt.Errorf("ошибка при получении ID пользователя %s: %w", username, err)
-		}
-		userIDs = append(userIDs, resp.GetId())
-		log.Printf("Получен ID пользователя %s: %d", username, resp.GetId())
+	resp, err := s.authClient.GetByUsernames(ctx, &userv1.GetByUsernamesRequest{
+		Usernames: req.GetUsernames(),
+	})
+	if err != nil {
+		log.Printf("Ошибка при пакетном получении пользователей: %v", err)
+		return nil, fmt.Errorf("ошибка при получении пользователей: %w", err)
 	}
+	//проверим что все пользователи были найдены
+	if len(resp.GetUsers()) != len(req.GetUsernames()) {
+		log.Printf("Не все пользователи найдены. Запрошено: %d, найдено: %d", len(req.GetUsernames()), len(resp.GetUsers()))
+		return nil, fmt.Errorf("не все пользователи найдены: запрошено %d, найдено %d", len(req.GetUsernames()), len(resp.GetUsers()))
+	}
+
+	//собераем id
+	userIDs := make([]int64, 0, len(resp.GetUsers()))
+	for i, user := range resp.GetUsers() {
+		userIDs[i] = user.GetId()
+	}
+	log.Printf("получены ID пользователей: %v", userIDs)
 
 	id, err := s.config.CreateChat(userIDs)
 	if err != nil {
@@ -81,6 +88,7 @@ func (s *server) Delete(ctx context.Context, req *chatv1.DeleteRequest) (*emptyp
 	if err := s.config.DeleteChat(req.GetId()); err != nil {
 		return nil, fmt.Errorf("ошибка при удалении чата: %w", err)
 	}
+
 	return &emptypb.Empty{}, nil
 }
 
