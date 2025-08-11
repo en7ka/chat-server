@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"log"
 )
@@ -46,29 +45,32 @@ func (s *PostgresConfig) CreateChat(users IDs) (*int64, error) {
 	var chatID int64
 	ctx := context.Background()
 
-	query := "INSERT INTO chat.chats (type) VALUES ($1) RETURNING id"
+	tx, err := s.con.Begin(ctx)
+	if err != nil {
+		log.Printf("Ошибка при начале транзакции: %v", err)
+		return nil, fmt.Errorf("ошибка при начале транзакции: %w", err)
+	}
 
-	if err := s.con.QueryRow(ctx, query, "group").Scan(&chatID); err != nil {
+	defer tx.Rollback(ctx)
+
+	query := "INSERT INTO chat.chats (type) VALUES ($1) RETURNING id"
+	if err := tx.QueryRow(ctx, query, "group").Scan(&chatID); err != nil {
 		log.Printf("Ошибка при создании чата: %v", err)
 		return nil, fmt.Errorf("ошибка при создании чата: %w", err)
 	}
 
-	queryBuilder := sq.Insert("chat.chat_members").Columns("chat_id", "user_id")
-
-	for _, userID := range users {
-		queryBuilder = queryBuilder.Values(chatID, userID)
-	}
-
-	sqlStr, args, err := queryBuilder.PlaceholderFormat(sq.Dollar).ToSql()
-	if err != nil {
-		log.Printf("Ошибка при формировании запроса: %v", err)
-		return nil, fmt.Errorf("ошибка при формировании запроса на добавление участников: %w", err)
-	}
-	_, err = s.con.Exec(ctx, sqlStr, args...)
+	insertQuery := "INSERT INTO chat.chat_members (chat_id, user_id) VALUES ($1, $2)"
+	_, err = tx.Exec(ctx, insertQuery, chatID, users)
 	if err != nil {
 		log.Printf("Ошибка при выполнении запроса на добавление участников: %v", err)
 		return nil, fmt.Errorf("ошибка при выполнении запроса на добавление участников: %w", err)
 	}
+	//если все успешно, коммитим транзакцию
+	if err := tx.Commit(ctx); err != nil {
+		log.Printf("Ошибка при коммите транзакции: %v", err)
+		return nil, fmt.Errorf("ошибка при коммите транзакции: %w", err)
+	}
+
 	log.Printf("Создан чат с id: %d. В него добавлены пользователи: %+v", chatID, users)
 
 	return &chatID, nil
