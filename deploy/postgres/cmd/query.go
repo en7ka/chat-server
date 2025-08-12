@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	dbDSN = "localhost:5433 dbname=chat_db user=data-user password=note-password sslmode=disable"
+	dbDSN = "DEFAULT_DSN"
 )
 
 type PostgresConfig struct {
