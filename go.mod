@@ -5,6 +5,7 @@ go 1.24.3
 require (
 	github.com/en7ka/auth v0.0.0-20250812005542-e6f7d77112dc
 	github.com/jackc/pgx/v5 v5.7.5
+	github.com/joho/godotenv v1.5.1
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.7
 )

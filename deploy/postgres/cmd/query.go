@@ -4,19 +4,64 @@ import (
 	"context"
 	"fmt"
 	"github.com/jackc/pgx/v5"
+	"github.com/joho/godotenv"
 	"log"
-)
-
-const (
-	dbDSN = "DEFAULT_DSN"
+	"net/url"
+	"os"
 )
 
 type PostgresConfig struct {
 	con pgx.Conn
+	DSN string
+}
+
+func loadEnv() { _ = godotenv.Load("deploy/.env", ".env") }
+
+func getenv(k, def string) string {
+	if v, ok := os.LookupEnv(k); ok && v != "" {
+		return v
+	}
+	return def
+}
+
+func buildDSN() string {
+	if v := os.Getenv("DATABASE_URL"); v != "" {
+		return v
+	}
+	user := getenv("PG_USER", "data-user")
+	pass := getenv("PG_PASSWORD", "note-password")
+	host := getenv("PG_HOST", "127.0.0.1")
+	port := getenv("PG_PORT", "5432")
+	db := getenv("PG_DATABASE_NAME", "chat_db")
+	ssl := getenv("PG_SSLMODE", "disable")
+	searchPath := os.Getenv("PG_SEARCH_PATH")
+	u := url.URL{Scheme: "postgres", User: url.UserPassword(user, pass), Host: fmt.Sprintf("%s:%s", host, port), Path: "/" + db}
+	q := url.Values{}
+	q.Set("sslmode", ssl)
+	if searchPath != "" {
+		q.Set("options", "-c search_path="+searchPath)
+	}
+	u.RawQuery = q.Encode()
+
+	return u.String()
+}
+
+func maskDSN(d string) string {
+	u, err := url.Parse(d)
+	if err != nil {
+		return d
+	}
+	if u.User != nil {
+		u.User = url.UserPassword(u.User.Username(), "*****")
+	}
+	return u.String()
 }
 
 // подключение к бд
 func InitPostgresConfig() *PostgresConfig {
+	loadEnv()
+	dbDSN := buildDSN()
+	log.Printf("Подключение к бд: %s", maskDSN(dbDSN))
 	con, err := pgx.Connect(context.Background(), dbDSN)
 	if err != nil {
 		log.Fatalf("ошибка подключения к бд: %v", err)
@@ -97,7 +142,7 @@ func (s *PostgresConfig) SendMessageChat(message Message) error {
 	ctx := context.Background()
 	insertQuery := `
 			INSERT INTO chat.chat_members
-			VALUES ($1, $2, $3)
+			SELECT $1, $2, $3
 			FROM chat.chats
 			WHERE id = $1 AND is_deleted = FALSE`
 
