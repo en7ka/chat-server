@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	dbDSN = "DEFAULT_DSN"
+	dbDSN = "localhost:5433 dbname=chat_db user=data-user password=note-password sslmode=disable"
 )
 
 type PostgresConfig struct {
@@ -42,32 +42,34 @@ type PostgresInterface interface {
 
 // реализация CreateChat
 func (s *PostgresConfig) CreateChat(users IDs) (*int64, error) {
-	var chatID int64
-	ctx := context.Background()
-
-	tx, err := s.con.Begin(ctx)
-	if err != nil {
-		log.Printf("Ошибка при начале транзакции: %v", err)
-		return nil, fmt.Errorf("ошибка при начале транзакции: %w", err)
+	if len(users) == 0 {
+		return nil, fmt.Errorf("empty users")
 	}
 
+	ctx := context.Background()
+	tx, err := s.con.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
 	defer tx.Rollback(ctx)
 
-	query := "INSERT INTO chat.chats (type) VALUES ($1) RETURNING id"
-	if err := tx.QueryRow(ctx, query, "group").Scan(&chatID); err != nil {
-		log.Printf("Ошибка при создании чата: %v", err)
+	var chatID int64
+	// unnest используем для развертования среза в массив, 2 параметр приводит к bigint[]
+	query := `
+		WITH created AS (
+			  INSERT INTO chat.chats (type) VALUES ($1) RETURNING id
+		), ins AS (
+			  INSERT INTO chat.chat_members (chat_id, user_id)
+			  SELECT c.id, unnest($2::bigint[]) FROM created c
+			  RETURNING 1
+		)
+		SELECT id FROM created`
+
+	if err := tx.QueryRow(ctx, query, "group", users).Scan(&chatID); err != nil {
 		return nil, fmt.Errorf("ошибка при создании чата: %w", err)
 	}
 
-	insertQuery := "INSERT INTO chat.chat_members (chat_id, user_id) VALUES ($1, $2)"
-	_, err = tx.Exec(ctx, insertQuery, chatID, users)
-	if err != nil {
-		log.Printf("Ошибка при выполнении запроса на добавление участников: %v", err)
-		return nil, fmt.Errorf("ошибка при выполнении запроса на добавление участников: %w", err)
-	}
-	//если все успешно, коммитим транзакцию
 	if err := tx.Commit(ctx); err != nil {
-		log.Printf("Ошибка при коммите транзакции: %v", err)
 		return nil, fmt.Errorf("ошибка при коммите транзакции: %w", err)
 	}
 
@@ -95,7 +97,7 @@ func (s *PostgresConfig) SendMessageChat(message Message) error {
 	ctx := context.Background()
 	insertQuery := `
 			INSERT INTO chat.chat_members
-			SELECT $1, $2, $3
+			VALUES ($1, $2, $3)
 			FROM chat.chats
 			WHERE id = $1 AND is_deleted = FALSE`
 

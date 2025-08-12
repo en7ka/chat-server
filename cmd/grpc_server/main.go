@@ -69,14 +69,17 @@ func (s *server) Create(ctx context.Context, req *chatv1.CreateRequest) (*chatv1
 
 	//собераем id
 	userIDs := make([]int64, 0, len(resp.GetUsers()))
-	for i, user := range resp.GetUsers() {
-		userIDs[i] = user.GetId()
+	for _, user := range resp.GetUsers() {
+		userIDs = append(userIDs, user.GetId())
 	}
 	log.Printf("получены ID пользователей: %v", userIDs)
 
 	id, err := s.config.CreateChat(userIDs)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка при создании чата: %w", err)
+	}
+	if id == nil {
+		return nil, fmt.Errorf("создание чата вернуло nil ID")
 	}
 
 	return &chatv1.CreateResponse{Id: *id}, nil

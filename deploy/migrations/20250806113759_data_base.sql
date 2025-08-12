@@ -38,6 +38,5 @@ CREATE TABLE chat.messages(
 DROP TABLE IF EXISTS chat.messages;
 DROP TABLE IF EXISTS chat.chat_members;
 DROP TABLE IF EXISTS chat.chats;
-DROP SCHEMA IF EXISTS chat CASCADE;
 
 -- +goose StatementEnd
