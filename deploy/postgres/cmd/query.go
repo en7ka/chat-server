@@ -1,0 +1,161 @@
+package cmd
+
+import (
+	"context"
+	"fmt"
+	"github.com/jackc/pgx/v5"
+	"github.com/joho/godotenv"
+	"log"
+	"net/url"
+	"os"
+)
+
+type PostgresConfig struct {
+	con pgx.Conn
+	DSN string
+}
+
+func loadEnv() { _ = godotenv.Load("deploy/.env", ".env") }
+
+func getenv(k, def string) string {
+	if v, ok := os.LookupEnv(k); ok && v != "" {
+		return v
+	}
+	return def
+}
+
+func buildDSN() string {
+	if v := os.Getenv("DATABASE_URL"); v != "" {
+		return v
+	}
+	user := getenv("PG_USER", "data-user")
+	pass := getenv("PG_PASSWORD", "note-password")
+	host := getenv("PG_HOST", "127.0.0.1")
+	port := getenv("PG_PORT", "5432")
+	db := getenv("PG_DATABASE_NAME", "chat_db")
+	ssl := getenv("PG_SSLMODE", "disable")
+	searchPath := os.Getenv("PG_SEARCH_PATH")
+	u := url.URL{Scheme: "postgres", User: url.UserPassword(user, pass), Host: fmt.Sprintf("%s:%s", host, port), Path: "/" + db}
+	q := url.Values{}
+	q.Set("sslmode", ssl)
+	if searchPath != "" {
+		q.Set("options", "-c search_path="+searchPath)
+	}
+	u.RawQuery = q.Encode()
+
+	return u.String()
+}
+
+func maskDSN(d string) string {
+	u, err := url.Parse(d)
+	if err != nil {
+		return d
+	}
+	if u.User != nil {
+		u.User = url.UserPassword(u.User.Username(), "*****")
+	}
+	return u.String()
+}
+
+// подключение к бд
+func InitPostgresConfig() *PostgresConfig {
+	loadEnv()
+	dbDSN := buildDSN()
+	log.Printf("Подключение к бд: %s", maskDSN(dbDSN))
+	con, err := pgx.Connect(context.Background(), dbDSN)
+	if err != nil {
+		log.Fatalf("ошибка подключения к бд: %v", err)
+	}
+
+	return &PostgresConfig{con: *con}
+}
+
+// закрытие бд
+func (s *PostgresConfig) CloseCon() {
+	err := s.con.Close(context.Background())
+	if err != nil {
+		log.Printf("ошибка в закрытии бд: %v", err)
+	}
+}
+
+// интерфейс для работы с бд
+type PostgresInterface interface {
+	CreateChat(users IDs) (int64, error)
+	DeleteChat(id int64) error
+	SendMessageChat(message Message) error
+}
+
+// реализация CreateChat
+func (s *PostgresConfig) CreateChat(users IDs) (*int64, error) {
+	if len(users) == 0 {
+		return nil, fmt.Errorf("empty users")
+	}
+
+	ctx := context.Background()
+	tx, err := s.con.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	var chatID int64
+	// unnest используем для развертования среза в массив, 2 параметр приводит к bigint[]
+	query := `
+		WITH created AS (
+			  INSERT INTO chat.chats (type) VALUES ($1) RETURNING id
+		), ins AS (
+			  INSERT INTO chat.chat_members (chat_id, user_id)
+			  SELECT c.id, unnest($2::bigint[]) FROM created c
+			  RETURNING 1
+		)
+		SELECT id FROM created`
+
+	if err := tx.QueryRow(ctx, query, "group", users).Scan(&chatID); err != nil {
+		return nil, fmt.Errorf("ошибка при создании чата: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("ошибка при коммите транзакции: %w", err)
+	}
+
+	log.Printf("Создан чат с id: %d. В него добавлены пользователи: %+v", chatID, users)
+
+	return &chatID, nil
+}
+
+// реализация DeleteChat
+func (s *PostgresConfig) DeleteChat(chatID int64) error {
+	ctx := context.Background()
+	del := "UPDATE chat.chats SET is_deleted = TRUE WHERE id = $1"
+
+	_, err := s.con.Exec(ctx, del, chatID)
+	if err != nil {
+		return fmt.Errorf("ошибка при удалении чата с id %d: %w", chatID, err)
+	}
+	log.Printf("Удален чат с id: %d", chatID)
+
+	return nil
+}
+
+// реализация SendMessage
+func (s *PostgresConfig) SendMessageChat(message Message) error {
+	ctx := context.Background()
+	insertQuery := `
+			INSERT INTO chat.chat_members
+			SELECT $1, $2, $3
+			FROM chat.chats
+			WHERE id = $1 AND is_deleted = FALSE`
+
+	com, err := s.con.Exec(ctx, insertQuery, message.ChatID, message.FromUID, message.Body)
+	if err != nil {
+		log.Printf("Ошибка при отправке сообщения в чат %d: %v", message.ChatID, err)
+		return fmt.Errorf("ошибка при отправке сообщения: %w", err)
+	}
+	//проверяем была ли вставлена хоть одна строка
+	if com.RowsAffected() == 0 {
+		return fmt.Errorf("не удалось отправить сообщение в чат %d: чат не найден или удален", message.ChatID)
+	}
+	log.Printf("Пользователь %s отправил сообщение %s в чат %d", message.From, message.Body, message.ChatID)
+
+	return nil
+}
