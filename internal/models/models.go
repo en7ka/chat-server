@@ -15,7 +15,7 @@ type Chat struct {
 type ChatMember struct {
 	ID       int64
 	ChatID   int64
-	UserId   int64
+	UserID   int64
 	JoinedAt time.Time
 	IsAdmin  bool
 }
@@ -27,3 +27,8 @@ type Message struct {
 	Text       string
 	Timestamp  time.Time
 }
+
+const (
+	ChatTypeGroup   = "group"
+	ChatTypePrivate = "private"
+)
