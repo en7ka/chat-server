@@ -3,22 +3,21 @@ package chat
 import (
 	"context"
 	"errors"
-	"github.com/en7ka/chat-server/internal/converter"
+	"fmt"
 	"github.com/en7ka/chat-server/internal/models"
 )
 
-func (s *serv) SendMessage(ctx context.Context, message *models.Message) (*models.Message, error) {
-	if message == nil {
+func (s *serv) SendMessage(ctx context.Context, msg *models.Message) (*models.Message, error) {
+	if msg == nil {
 		return nil, errors.New("message is nil")
 	}
-	repoMsg := converter.ToRepoMessageFromDomain(message)
 
-	messageID, err := s.chatRepository.SendMessage(ctx, repoMsg)
+	messageId, err := s.chatRepository.SendMessage(ctx, msg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to send message: %w", err)
 	}
 
-	message.ID = messageID
+	msg.ID = messageId
 
-	return message, nil
+	return msg, nil
 }

@@ -3,7 +3,7 @@ package chat
 import (
 	"context"
 	"errors"
-	"github.com/en7ka/chat-server/internal/converter"
+	"fmt"
 	"github.com/en7ka/chat-server/internal/models"
 )
 
@@ -12,14 +12,14 @@ func (s *serv) CreateChat(ctx context.Context, chat *models.Chat) (*models.Chat,
 		return nil, errors.New("chat is nil")
 	}
 
-	repoChat := converter.ToRepoChatFromDomain(chat)
-
-	chatId, err := s.chatRepository.CreateChat(ctx, repoChat)
+	// 1. Вызываем репозиторий и получаем ID созданного чата
+	chatID, err := s.chatRepository.CreateChat(ctx, chat)
 	if err != nil {
-		return nil, err
+		// 2. Если репозиторий вернул ошибку, оборачиваем ее и возвращаем
+		return nil, fmt.Errorf("failed to create chat in repository: %w", err)
 	}
 
-	chat.ID = chatId
+	chat.ID = chatID
 
 	return chat, nil
 }
