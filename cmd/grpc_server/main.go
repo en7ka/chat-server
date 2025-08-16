@@ -2,57 +2,57 @@ package main
 
 import (
 	"context"
-	"fmt"
+	chatApi "github.com/en7ka/chat-server/internal/api/chat"
+	"github.com/en7ka/chat-server/internal/config"
+	chatRepo "github.com/en7ka/chat-server/internal/repository/chat"
+	chatService "github.com/en7ka/chat-server/internal/service/chat"
+	desc "github.com/en7ka/chat-server/pkg/chat_v1"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
 	"net"
-	"sync/atomic"
-	"time"
-
-	desc "github.com/en7ka/chat-server/pkg/chat_v1"
 )
 
-const grpcPort = 50052
-
-type server struct {
-	desc.UnimplementedChatAPIServer
-}
-
-var nextID int64
-
-func (s *server) Create(ctx context.Context, req *desc.CreateRequest) (*desc.CreateResponse, error) {
-	log.Printf("Received Create chat request for users: %v", req.GetUsernames())
-	id := atomic.AddInt64(&nextID, 1)
-	return &desc.CreateResponse{Id: id}, nil
-}
-
-func (s *server) Delete(ctx context.Context, req *desc.DeleteRequest) (*emptypb.Empty, error) {
-	log.Printf("Received Delete chat request for id: %d", req.GetId())
-
-	return &emptypb.Empty{}, nil
-}
-
-func (s *server) SendMessage(ctx context.Context, req *desc.SendMessageRequest) (*emptypb.Empty, error) {
-	log.Printf("SendMessage from=%s text=%s time=%s", req.GetFrom(), req.GetText(), req.GetTime().AsTime().Format(time.RFC3339))
-	return &emptypb.Empty{}, nil
-}
-
 func main() {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
+	ctx := context.Background()
+
+	//считываем переменные окружения
+	err := config.Load(".env")
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatalf("ошибка к подключению к .env: %v", err)
 	}
 
+	grpcConfig, err := config.NewGRPCConfig()
+	if err != nil {
+		log.Fatalf("ошибка к подключению с grpc config: %v", err)
+	}
+
+	pgConfig, err := config.NewPGConfig()
+	if err != nil {
+		log.Fatalf("ошибка к подключению к pg config: %v", err)
+	}
+
+	lis, err := net.Listen("tcp", grpcConfig.Address())
+	if err != nil {
+		log.Printf("ошибка в прослушивании: %v", err)
+	}
+
+	pool, err := pgxpool.New(ctx, pgConfig.DSN())
+	if err != nil {
+		log.Printf("ошибка в подключении: %v", err)
+	}
+	defer pool.Close()
+
+	noteRepo := chatRepo.NewRepository(pool)
+	noteService := chatService.NewService(noteRepo)
+
 	s := grpc.NewServer()
-
-	desc.RegisterChatAPIServer(s, &server{})
 	reflection.Register(s)
+	desc.RegisterChatAPIServer(s, chatApi.NewImplementation(noteService))
 
-	log.Printf("Starting gRPC server on port %d", grpcPort)
-
+	log.Printf("Сервер запущен на %s", grpcConfig.Address())
 	if err = s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		log.Fatalf("ошибка в запуске сервера: %v", err)
 	}
 }
