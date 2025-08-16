@@ -2,8 +2,12 @@ package chat
 
 import (
 	"context"
-	"github.com/en7ka/chat-server/internal/repository/chat/model"
+	"errors"
+	"github.com/en7ka/chat-server/internal/converter"
+	"github.com/en7ka/chat-server/internal/models"
+	repoModel "github.com/en7ka/chat-server/internal/repository/chat/model"
 	repinf "github.com/en7ka/chat-server/internal/repository/repointerface"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	sq "github.com/Masterminds/squirrel"
@@ -48,10 +52,11 @@ func NewRepository(db *pgxpool.Pool) repinf.ChatRepository {
 	return &repo{db: db}
 }
 
-func (r *repo) CreateChat(ctx context.Context, chat *model.Chat) (int64, error) {
+func (r *repo) CreateChat(ctx context.Context, chat *models.Chat) (int64, error) {
+	repoChat := converter.ToRepoChatFromDomain(chat)
 	qb := sq.Insert(tableNameChats).
 		Columns(chatsNameColumn, chatsTypeColumn).
-		Values(chat.Name, chat.Type).
+		Values(chat.Name, repoChat.Type).
 		PlaceholderFormat(sq.Dollar).
 		Suffix("RETURNING " + chatsIdColumn)
 
@@ -68,30 +73,33 @@ func (r *repo) CreateChat(ctx context.Context, chat *model.Chat) (int64, error) 
 	return chatId, nil
 }
 
-func (r *repo) AddMemberToChat(ctx context.Context, member *model.ChatMember) (int64, error) {
+func (r *repo) AddMemberToChat(ctx context.Context, member *models.ChatMember) (int64, error) {
+	repoMember := converter.ToRepoChatMemberFromDomain(member)
+
 	qb := sq.Insert(tableNameChatMembers).
-		Columns(chatMembersIdColumn, chatMembersUserIdColumn, chatMembersIsAdminColumn).
-		Values(member.ChatID, member.UserId, member.IsAdmin).
+		Columns(chatMembersChatIdColumn, chatMembersUserIdColumn, chatMembersIsAdminColumn).
+		Values(repoMember.ChatID, repoMember.UserID, repoMember.IsAdmin).
 		PlaceholderFormat(sq.Dollar).
-		Suffix("RETURNING " + chatsIdColumn)
+		Suffix("RETURNING " + chatMembersIdColumn)
 
 	query, args, err := qb.ToSql()
 	if err != nil {
 		return 0, err
 	}
 
-	var chatId int64
+	var memberId int64
 	if err := r.db.QueryRow(ctx, query, args...).Scan(); err != nil {
 		return 0, err
 	}
 
-	return chatId, nil
+	return memberId, nil
 }
 
-func (r *repo) SendMessage(ctx context.Context, message *model.Message) (int64, error) {
+func (r *repo) SendMessage(ctx context.Context, message *models.Message) (int64, error) {
+	repoMsg := converter.ToRepoMessageFromDomain(message)
 	qb := sq.Insert(tableNameMessages).
 		Columns(messagesIdColumn, messagesFromUserIdColumn, messagesTextColumn).
-		Values(message.ChatID, message.FromUserID, message.Text).
+		Values(message.ChatID, message.FromUserID, repoMsg.Text).
 		PlaceholderFormat(sq.Dollar).
 		Suffix("RETURNING " + messagesIdColumn)
 
@@ -108,7 +116,7 @@ func (r *repo) SendMessage(ctx context.Context, message *model.Message) (int64, 
 	return chatId, nil
 }
 
-func (r *repo) GetChatMessages(ctx context.Context, chatId int64) ([]*model.Message, error) {
+func (r *repo) GetChatMessages(ctx context.Context, chatId int64) ([]*models.Message, error) {
 	qb := sq.Select(
 		messagesIdColumn,
 		messagesChatIdColumn,
@@ -132,24 +140,60 @@ func (r *repo) GetChatMessages(ctx context.Context, chatId int64) ([]*model.Mess
 	}
 	defer rows.Close()
 
-	var messages []*model.Message
+	var repoMessages []*repoModel.Message
 	for rows.Next() {
-		var msg model.Message
+		var msg repoModel.Message
 		if err := rows.Scan(
-			&msg.ID,
 			&msg.ChatID,
 			&msg.FromUserID,
 			&msg.Text,
-			&msg.Timestamp,
-		); err != nil {
+			&msg.Timestamp); err != nil {
 			return nil, err
 		}
-		messages = append(messages, &msg)
+		repoMessages = append(repoMessages, &msg)
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return messages, nil
+	domainMessages := make([]*models.Message, 0, len(repoMessages))
+	for _, repoMsg := range repoMessages {
+		domainMessages = append(domainMessages, converter.ToDomainMessageFromRepo(repoMsg))
+	}
+
+	return domainMessages, nil
+}
+
+func (r *repo) GetChatById(ctx context.Context, chatId int64) (*models.Chat, error) {
+	qb := sq.Select(
+		chatsIdColumn,
+		chatsNameColumn,
+		chatsTypeColumn,
+		chatsCreatedAtColumn,
+		chatsIsDeletedColumn,
+	).
+		From(tableNameChats).
+		Where(sq.Eq{chatsIdColumn: chatId}).
+		PlaceholderFormat(sq.Dollar)
+
+	query, args, err := qb.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	var repoChat repoModel.Chat
+	if err := r.db.QueryRow(ctx, query, args...).Scan(
+		&repoChat.ID,
+		&repoChat.Name,
+		&repoChat.Type,
+		&repoChat.CreatedAt,
+		&repoChat.IsDeleted); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return converter.ToDomainChatFromRepo(&repoChat), nil
 }
