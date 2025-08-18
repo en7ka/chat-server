@@ -3,4 +3,4 @@
 /bin/protoc-gen-validate
 /internal/bin/
 .idea/
-.env/
+.env
