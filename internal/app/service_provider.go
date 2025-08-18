@@ -26,7 +26,7 @@ type serviceProvaider struct {
 	userRepository userRepo.ChatRepository
 	userService    userService.ChatService
 
-	userImpl *chat.Implementation
+	userImpl *chat.Controller
 }
 
 func newServiceProvider() *serviceProvaider {
@@ -104,7 +104,7 @@ func (s *serviceProvaider) GetUserService(ctx context.Context) userService.ChatS
 	return s.userService
 }
 
-func (s *serviceProvaider) GetUserImpl(ctx context.Context) *chat.Implementation {
+func (s *serviceProvaider) GetUserImpl(ctx context.Context) *chat.Controller {
 	if s.userImpl == nil {
 		s.userImpl = chat.NewImplementation(s.GetUserService(ctx))
 	}
