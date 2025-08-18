@@ -3,12 +3,13 @@ package chat
 import (
 	"context"
 	"errors"
+
+	"github.com/en7ka/chat-server/internal/client/db"
 	"github.com/en7ka/chat-server/internal/converter"
 	"github.com/en7ka/chat-server/internal/models"
 	repoModel "github.com/en7ka/chat-server/internal/repository/chat/model"
 	repinf "github.com/en7ka/chat-server/internal/repository/repointerface"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	sq "github.com/Masterminds/squirrel"
 )
@@ -44,10 +45,10 @@ const (
 )
 
 type repo struct {
-	db *pgxpool.Pool
+	db db.Client
 }
 
-func NewRepository(db *pgxpool.Pool) repinf.ChatRepository {
+func NewRepository(db db.Client) repinf.ChatRepository {
 
 	return &repo{db: db}
 }
@@ -65,8 +66,13 @@ func (r *repo) CreateChat(ctx context.Context, chat *models.Chat) (int64, error)
 		return 0, err
 	}
 
+	q := db.Query{
+		Name:     "user_repository.CreateChat",
+		QueryRaw: query,
+	}
+
 	var chatId int64
-	if err := r.db.QueryRow(ctx, query, args...).Scan(&chatId); err != nil {
+	if err = r.db.DB().QueryRowContext(ctx, q, args...).Scan(&chatId); err != nil {
 		return 0, err
 	}
 
@@ -87,8 +93,13 @@ func (r *repo) AddMemberToChat(ctx context.Context, member *models.ChatMember) (
 		return 0, err
 	}
 
+	q := db.Query{
+		Name:     "user_repository.AddMemberToChat",
+		QueryRaw: query,
+	}
+
 	var memberId int64
-	if err := r.db.QueryRow(ctx, query, args...).Scan(); err != nil {
+	if err = r.db.DB().QueryRowContext(ctx, q, args...).Scan(); err != nil {
 		return 0, err
 	}
 
@@ -97,8 +108,9 @@ func (r *repo) AddMemberToChat(ctx context.Context, member *models.ChatMember) (
 
 func (r *repo) SendMessage(ctx context.Context, message *models.Message) (int64, error) {
 	repoMsg := converter.ToRepoMessageFromDomain(message)
+
 	qb := sq.Insert(tableNameMessages).
-		Columns(messagesIdColumn, messagesFromUserIdColumn, messagesTextColumn).
+		Columns(messagesChatIdColumn, messagesFromUserIdColumn, messagesTextColumn).
 		Values(message.ChatID, message.FromUserID, repoMsg.Text).
 		PlaceholderFormat(sq.Dollar).
 		Suffix("RETURNING " + messagesIdColumn)
@@ -108,12 +120,17 @@ func (r *repo) SendMessage(ctx context.Context, message *models.Message) (int64,
 		return 0, err
 	}
 
-	var chatId int64
-	if err := r.db.QueryRow(ctx, query, args...).Scan(&chatId); err != nil {
+	q := db.Query{
+		Name:     "user_repository.SendMessage",
+		QueryRaw: query,
+	}
+
+	var messageId int64
+	if err = r.db.DB().QueryRowContext(ctx, q, args...).Scan(&messageId); err != nil {
 		return 0, err
 	}
 
-	return chatId, nil
+	return messageId, nil
 }
 
 func (r *repo) GetChatMessages(ctx context.Context, chatId int64) ([]*models.Message, error) {
@@ -134,7 +151,12 @@ func (r *repo) GetChatMessages(ctx context.Context, chatId int64) ([]*models.Mes
 		return nil, err
 	}
 
-	rows, err := r.db.Query(ctx, query, args...)
+	q := db.Query{
+		Name:     "user_repository.GetChatMessages",
+		QueryRaw: query,
+	}
+
+	rows, err := r.db.DB().QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +165,7 @@ func (r *repo) GetChatMessages(ctx context.Context, chatId int64) ([]*models.Mes
 	var repoMessages []*repoModel.Message
 	for rows.Next() {
 		var msg repoModel.Message
-		if err := rows.Scan(
+		if err = rows.Scan(
 			&msg.ChatID,
 			&msg.FromUserID,
 			&msg.Text,
@@ -153,7 +175,7 @@ func (r *repo) GetChatMessages(ctx context.Context, chatId int64) ([]*models.Mes
 		repoMessages = append(repoMessages, &msg)
 	}
 
-	if err := rows.Err(); err != nil {
+	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -182,8 +204,13 @@ func (r *repo) GetChatById(ctx context.Context, chatId int64) (*models.Chat, err
 		return nil, err
 	}
 
+	q := db.Query{
+		Name:     "user_repository.GetChatMessages",
+		QueryRaw: query,
+	}
+
 	var repoChat repoModel.Chat
-	if err := r.db.QueryRow(ctx, query, args...).Scan(
+	if err = r.db.DB().QueryRowContext(ctx, q, args...).Scan(
 		&repoChat.ID,
 		&repoChat.Name,
 		&repoChat.Type,
