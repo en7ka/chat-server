@@ -2,16 +2,17 @@ package chat
 
 import (
 	"github.com/en7ka/chat-server/internal/client/db"
-	repoif "github.com/en7ka/chat-server/internal/repository/repointerface"
+	repoinf "github.com/en7ka/chat-server/internal/repository/repointerface"
+	servinf "github.com/en7ka/chat-server/internal/service/servinterface"
 )
 
-type serv struct {
-	chatRepository repoif.ChatRepository
+type chatService struct {
+	chatRepository repoinf.ChatRepository
 	txManager      db.TxManager
 }
 
-func NewService(chatRepository repoif.ChatRepository, txManager db.TxManager) *serv {
-	return &serv{
+func NewService(chatRepository repoinf.ChatRepository, txManager db.TxManager) servinf.ChatService {
+	return &chatService{
 		chatRepository: chatRepository,
 		txManager:      txManager,
 	}
