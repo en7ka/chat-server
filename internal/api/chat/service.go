@@ -5,12 +5,12 @@ import (
 	desc "github.com/en7ka/chat-server/pkg/chat_v1"
 )
 
-type Implementation struct {
+type Controller struct {
 	desc.UnimplementedChatAPIServer
 	chatService usserv.ChatService
 }
 
-func NewImplementation(chatService usserv.ChatService) *Implementation {
+func NewImplementation(chatService usserv.ChatService) *Controller {
 
-	return &Implementation{chatService: chatService}
+	return &Controller{chatService: chatService}
 }

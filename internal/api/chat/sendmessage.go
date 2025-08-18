@@ -2,14 +2,15 @@ package chat
 
 import (
 	"context"
+	"strings"
+
 	"github.com/en7ka/chat-server/internal/converter"
 	desc "github.com/en7ka/chat-server/pkg/chat_v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"strings"
 )
 
-func (i *Implementation) SendMessage(ctx context.Context, req *desc.SendMessageRequest) (*desc.SendMessageResponse, error) {
+func (c *Controller) SendMessage(ctx context.Context, req *desc.SendMessageRequest) (*desc.SendMessageResponse, error) {
 	if req.GetChatId() <= 0 {
 		return nil, status.Error(codes.InvalidArgument, "chat id must be greater than zero")
 	}
@@ -23,7 +24,7 @@ func (i *Implementation) SendMessage(ctx context.Context, req *desc.SendMessageR
 	}
 
 	domainMessage := converter.FromProtoSendMessageRequest(req)
-	createMsg, err := i.chatService.SendMessage(ctx, domainMessage)
+	createMsg, err := c.chatService.SendMessage(ctx, domainMessage)
 	if err != nil {
 		return nil, err
 	}
