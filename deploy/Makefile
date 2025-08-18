@@ -1,7 +1,7 @@
 include .env
 
 LOCAL_BIN := $(CURDIR)/bin
-MIGRATION_DIR := ./migrations
+MIGRATION_DIR := ../db/migrations
 MIGRATION_DSN := "host=localhost port=$(PG_PORT) dbname=$(PG_DATABASE_NAME) user=$(PG_USER) password=$(PG_PASSWORD) sslmode=disable"
 
 .PHONY: install-deps local-migration-up local-migration-down local-migration-status
