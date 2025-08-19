@@ -15,14 +15,14 @@ func (c *Controller) GetChatMessages(ctx context.Context, req *desc.GetMessagesR
 		return nil, status.Error(codes.InvalidArgument, "Chat ID must be a positive number")
 	}
 
-	domainMessages, err := c.chatService.GetChatMessages(ctx, chatId)
+	chatMessages, err := c.chatService.GetChatMessages(ctx, chatId)
 	if err != nil {
 		return nil, err
 	}
 
-	protoMessages := make([]*desc.Message, 0, len(domainMessages))
-	for _, domainMsg := range domainMessages {
-		protoMessages = append(protoMessages, converter.ToProtoMessage(domainMsg))
+	protoMessages := make([]*desc.Message, 0, len(chatMessages))
+	for _, chatMsg := range chatMessages {
+		protoMessages = append(protoMessages, converter.ToProtoMessage(chatMsg))
 	}
 
 	// 4. Формирование ответа

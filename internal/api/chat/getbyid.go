@@ -15,12 +15,12 @@ func (c *Controller) GetChat(ctx context.Context, req *desc.GetChatRequest) (*de
 		return nil, status.Error(codes.InvalidArgument, "Chat ID must be a positive number")
 	}
 
-	domainChat, err := c.chatService.GetChatById(ctx, chatId)
+	chat, err := c.chatService.GetChatById(ctx, chatId)
 	if err != nil {
 		return nil, err
 	}
 
-	protoChat := converter.ToProtoChat(domainChat)
+	protoChat := converter.ToProtoChat(chat)
 
 	response := &desc.GetChatResponse{
 		Chat: protoChat,

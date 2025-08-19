@@ -23,8 +23,8 @@ func (c *Controller) SendMessage(ctx context.Context, req *desc.SendMessageReque
 		return nil, status.Error(codes.InvalidArgument, "message text cannot be empty")
 	}
 
-	domainMessage := converter.FromProtoSendMessageRequest(req)
-	createMsg, err := c.chatService.SendMessage(ctx, domainMessage)
+	messageId := converter.FromProtoSendMessageRequest(req)
+	createMsg, err := c.chatService.SendMessage(ctx, messageId)
 	if err != nil {
 		return nil, err
 	}

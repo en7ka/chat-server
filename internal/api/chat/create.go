@@ -16,9 +16,9 @@ func (c *Controller) CreateChat(ctx context.Context, req *desc.CreateRequest) (*
 		return nil, status.Error(codes.InvalidArgument, "Usernames list cannot be empty")
 	}
 
-	domainChat := converter.FromProtoCreateChatRequest(req)
+	chat := converter.FromProtoCreateChatRequest(req)
 
-	createdChat, err := c.chatService.CreateChat(ctx, domainChat)
+	createdChat, err := c.chatService.CreateChat(ctx, chat)
 	if err != nil {
 		log.Printf("CreateChat: Error creating chat: %v", err)
 		return nil, status.Error(codes.Internal, "Failed to create chat")

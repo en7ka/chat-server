@@ -14,8 +14,8 @@ func (c *Controller) AddMemberToChat(ctx context.Context, req *desc.AddMemberToC
 		return nil, status.Error(codes.InvalidArgument, "chat_id and user_id must be positive")
 	}
 
-	domainMember := converter.FromProtoAddMemberRequest(req)
-	memberID, err := c.chatService.AddMemberToChat(ctx, domainMember)
+	member := converter.FromProtoAddMemberRequest(req)
+	memberID, err := c.chatService.AddMemberToChat(ctx, member)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to add member")
 	}
