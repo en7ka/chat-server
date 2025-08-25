@@ -2,25 +2,32 @@ package chat
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/en7ka/chat-server/internal/models"
 )
 
-func (c *chatService) CreateChat(ctx context.Context, chat *models.Chat) (*models.Chat, error) {
-	if chat == nil {
-		return nil, errors.New("chat is nil")
-	}
+func (s *chatService) CreateChat(ctx context.Context, chat *models.Chat) (*models.Chat, error) {
+	var createdChat *models.Chat
 
-	// 1. Вызываем репозиторий и получаем ID созданного чата
-	chatID, err := c.chatRepository.CreateChat(ctx, chat)
+	err := s.txManager.ReadCommited(ctx, func(ctx context.Context) error {
+		chatID, err := s.chatRepository.CreateChat(ctx, chat)
+		if err != nil {
+			return fmt.Errorf("failed to create chat in repository: %w", err)
+		}
+
+		createdChat = &models.Chat{
+			ID:   chatID,
+			Name: chat.Name,
+			Type: chat.Type,
+		}
+
+		return nil
+	})
+
 	if err != nil {
-		// 2. Если репозиторий вернул ошибку, оборачиваем ее и возвращаем
-		return nil, fmt.Errorf("failed to create chat in repository: %w", err)
+		return nil, err
 	}
 
-	chat.ID = chatID
-
-	return chat, nil
+	return createdChat, nil
 }

@@ -2,15 +2,26 @@ package chat
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/en7ka/chat-server/internal/models"
 )
 
-func (c *chatService) GetChatMessages(ctx context.Context, chatId int64) ([]*models.Message, error) {
-	if chatId <= 0 {
-		return nil, errors.New("invalid chat ID")
+func (s *chatService) GetChatMessages(ctx context.Context, chatId int64) ([]*models.Message, error) {
+	var messages []*models.Message
+
+	err := s.txManager.ReadCommited(ctx, func(ctx context.Context) error {
+		var err error
+		messages, err = s.chatRepository.GetChatMessages(ctx, chatId)
+		if err != nil {
+			return fmt.Errorf("failed to get chat messages: %w", err)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
-	return c.chatRepository.GetChatMessages(ctx, chatId)
+	return messages, nil
 }

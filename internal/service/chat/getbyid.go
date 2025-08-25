@@ -7,14 +7,20 @@ import (
 	"github.com/en7ka/chat-server/internal/models"
 )
 
-func (c *chatService) GetChatById(ctx context.Context, chatId int64) (*models.Chat, error) {
-	if chatId <= 0 {
-		return nil, fmt.Errorf("invalid chat ID: %d", chatId)
-	}
+func (s *chatService) GetChatById(ctx context.Context, chatId int64) (*models.Chat, error) {
+	var chat *models.Chat
 
-	chat, err := c.chatRepository.GetChatById(ctx, chatId)
+	err := s.txManager.ReadCommited(ctx, func(ctx context.Context) error {
+		var err error
+		chat, err = s.chatRepository.GetChatById(ctx, chatId)
+		if err != nil {
+			return fmt.Errorf("failed to get chat by id from repository: %w", err)
+		}
+		return nil
+	})
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to get chat by id from repository: %w", err)
+		return nil, err
 	}
 
 	return chat, nil

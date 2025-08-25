@@ -2,15 +2,26 @@ package chat
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/en7ka/chat-server/internal/models"
 )
 
-func (c *chatService) AddMemberToChat(ctx context.Context, member *models.ChatMember) (int64, error) {
-	if member == nil {
-		return 0, errors.New("member is nil")
+func (s *chatService) AddMemberToChat(ctx context.Context, member *models.ChatMember) (int64, error) {
+	var memberID int64
+
+	err := s.txManager.ReadCommited(ctx, func(ctx context.Context) error {
+		var err error
+		memberID, err = s.chatRepository.AddMemberToChat(ctx, member)
+		if err != nil {
+			return fmt.Errorf("failed to add member in repository: %w", err)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return 0, err
 	}
 
-	return c.chatRepository.AddMemberToChat(ctx, member)
+	return memberID, nil
 }
