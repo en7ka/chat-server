@@ -4,19 +4,64 @@ package api.chat_v1;
 
 import 'google/protobuf/empty.proto';
 import 'google/protobuf/timestamp.proto';
+import "validate/validate.proto";
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 
 option go_package = "github.com/en7ka/chat-server/pkg/chat_v1;chatv1";
 
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "Chat API"
+    contact: {
+      name: "en7ka";
+      email: "enikdamei1999@mail.ru"
+    };
+  };
+
+  host: "localhost:8080";
+  schemes: HTTP;
+  consumes: "application/json";
+  produces: "application/json";
+};
+
 service ChatAPI {
-  rpc CreateChat(CreateRequest) returns (CreateResponse);
-  rpc Delete(DeleteRequest) returns (google.protobuf.Empty);
-  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse) {};
-  rpc GetChat(GetChatRequest) returns (GetChatResponse);
-  rpc AddMemberToChat(AddMemberToChatRequest) returns (AddMemberToChatResponse);
+  rpc CreateChat(CreateRequest) returns (CreateResponse) {
+    option (google.api.http) = {
+      post: "/chat/v1/create"
+      body: "*"
+    };
+  };
+  rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/chat/v1/{id}"
+    };
+  };
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse) {
+    option (google.api.http) = {
+      post: "/chat/v1/send"
+      body: "*"
+    };
+  };
+  rpc GetChat(GetChatRequest) returns (GetChatResponse) {
+    option (google.api.http) = {
+      get: "/chat/v1/{id}"
+    };
+  };
+  rpc AddMemberToChat(AddMemberToChatRequest) returns (AddMemberToChatResponse) {
+    option (google.api.http) = {
+      post: "/chat/v1/add_member"
+      body: "*"
+    };
+  };
 }
 
 message CreateRequest {
-  repeated string usernames = 1;
+  repeated string usernames = 1 [(validate.rules).repeated = {
+    min_items: 1,
+    max_items: 50,
+    items: {string: {min_len: 1, max_len: 255}}
+  }];
 }
 
 message CreateResponse {
@@ -24,13 +69,13 @@ message CreateResponse {
 }
 
 message DeleteRequest {
-  int64 id = 1;
+  int64 id = 1 [(validate.rules).int64.gt = 0];
 }
 
 message SendMessageRequest {
-  int64 chat_id = 1;
-  int64 from_user_id = 2;
-  string text = 3;
+  int64 chat_id = 1 [(validate.rules).int64.gt = 0];
+  int64 from_user_id = 2 [(validate.rules).int64.gt = 0];
+  string text = 3 [(validate.rules).string = {min_len: 1, max_len: 1000}];
 }
 
 message SendMessageResponse {
@@ -44,7 +89,7 @@ message Chat {
 }
 
 message GetChatRequest {
-  int64 id = 1;
+  int64 id = 1 [(validate.rules).int64.gt = 0];
 }
 
 message GetChatResponse {
@@ -59,7 +104,7 @@ message Message {
 }
 
 message GetMessagesRequest {
-  int64 chat_id = 1;
+  int64 chat_id = 1 [(validate.rules).int64.gt = 0];
 }
 
 message GetMessagesResponse {
@@ -67,8 +112,8 @@ message GetMessagesResponse {
 }
 
 message AddMemberToChatRequest {
-  int64 chat_id = 1;
-  int64 user_id = 2;
+  int64 chat_id = 1 [(validate.rules).int64.gt = 0];
+  int64 user_id = 2 [(validate.rules).int64.gt = 0];
 }
 
 message AddMemberToChatResponse {
