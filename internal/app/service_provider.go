@@ -18,8 +18,10 @@ import (
 )
 
 type serviceProvaider struct {
-	pgConfig   config.PGConfig
-	grpcConfig config.GRPCConfig
+	pgConfig      config.PGConfig
+	grpcConfig    config.GRPCConfig
+	httpConfig    config.HTTPConfig
+	swaggerConfig config.SwaggerConfig
 
 	dbClient       db.Client
 	txManager      db.TxManager
@@ -59,6 +61,32 @@ func (s *serviceProvaider) GetGRPCConfig() config.GRPCConfig {
 	return s.grpcConfig
 }
 
+func (s *serviceProvaider) GetHTTPConfig() config.HTTPConfig {
+	if s.httpConfig == nil {
+		cfg, err := config.NewHTTPConfig()
+		if err != nil {
+			log.Fatalf("NewHTTPConfig error: %v", err)
+		}
+
+		s.httpConfig = cfg
+	}
+
+	return s.httpConfig
+}
+
+func (s *serviceProvaider) GetSwaggerConfig() config.SwaggerConfig {
+	if s.swaggerConfig == nil {
+		cfg, err := config.NewSwaggerConfig()
+		if err != nil {
+			log.Fatalf("NewSwaggerConfig error: %v", err)
+		}
+
+		s.swaggerConfig = cfg
+	}
+
+	return s.swaggerConfig
+
+}
 func (s *serviceProvaider) GetDBClient(ctx context.Context) db.Client {
 	if s.dbClient == nil {
 		cl, err := pg.New(ctx, s.GetPGConfig().DSN())

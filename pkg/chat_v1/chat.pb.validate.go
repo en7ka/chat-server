@@ -57,6 +57,33 @@ func (m *CreateRequest) validate(all bool) error {
 
 	var errors []error
 
+	if l := len(m.GetUsernames()); l < 1 || l > 50 {
+		err := CreateRequestValidationError{
+			field:  "Usernames",
+			reason: "value must contain between 1 and 50 items, inclusive",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
+
+	for idx, item := range m.GetUsernames() {
+		_, _ = idx, item
+
+		if l := utf8.RuneCountInString(item); l < 1 || l > 255 {
+			err := CreateRequestValidationError{
+				field:  fmt.Sprintf("Usernames[%v]", idx),
+				reason: "value length must be between 1 and 255 runes, inclusive",
+			}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
+		}
+
+	}
+
 	if len(errors) > 0 {
 		return CreateRequestMultiError(errors)
 	}
@@ -259,7 +286,16 @@ func (m *DeleteRequest) validate(all bool) error {
 
 	var errors []error
 
-	// no validation rules for Id
+	if m.GetId() <= 0 {
+		err := DeleteRequestValidationError{
+			field:  "Id",
+			reason: "value must be greater than 0",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
 
 	if len(errors) > 0 {
 		return DeleteRequestMultiError(errors)
@@ -361,11 +397,38 @@ func (m *SendMessageRequest) validate(all bool) error {
 
 	var errors []error
 
-	// no validation rules for ChatId
+	if m.GetChatId() <= 0 {
+		err := SendMessageRequestValidationError{
+			field:  "ChatId",
+			reason: "value must be greater than 0",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
 
-	// no validation rules for FromUserId
+	if m.GetFromUserId() <= 0 {
+		err := SendMessageRequestValidationError{
+			field:  "FromUserId",
+			reason: "value must be greater than 0",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
 
-	// no validation rules for Text
+	if l := utf8.RuneCountInString(m.GetText()); l < 1 || l > 1000 {
+		err := SendMessageRequestValidationError{
+			field:  "Text",
+			reason: "value length must be between 1 and 1000 runes, inclusive",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
 
 	if len(errors) > 0 {
 		return SendMessageRequestMultiError(errors)
@@ -731,7 +794,16 @@ func (m *GetChatRequest) validate(all bool) error {
 
 	var errors []error
 
-	// no validation rules for Id
+	if m.GetId() <= 0 {
+		err := GetChatRequestValidationError{
+			field:  "Id",
+			reason: "value must be greater than 0",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
 
 	if len(errors) > 0 {
 		return GetChatRequestMultiError(errors)
@@ -1095,7 +1167,16 @@ func (m *GetMessagesRequest) validate(all bool) error {
 
 	var errors []error
 
-	// no validation rules for ChatId
+	if m.GetChatId() <= 0 {
+		err := GetMessagesRequestValidationError{
+			field:  "ChatId",
+			reason: "value must be greater than 0",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
 
 	if len(errors) > 0 {
 		return GetMessagesRequestMultiError(errors)
@@ -1335,9 +1416,27 @@ func (m *AddMemberToChatRequest) validate(all bool) error {
 
 	var errors []error
 
-	// no validation rules for ChatId
+	if m.GetChatId() <= 0 {
+		err := AddMemberToChatRequestValidationError{
+			field:  "ChatId",
+			reason: "value must be greater than 0",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
 
-	// no validation rules for UserId
+	if m.GetUserId() <= 0 {
+		err := AddMemberToChatRequestValidationError{
+			field:  "UserId",
+			reason: "value must be greater than 0",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
 
 	if len(errors) > 0 {
 		return AddMemberToChatRequestMultiError(errors)
