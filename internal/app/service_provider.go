@@ -17,7 +17,7 @@ import (
 	userService "github.com/en7ka/chat-server/internal/service/servinterface"
 )
 
-type serviceProvaider struct {
+type serviceProvider struct {
 	pgConfig      config.PGConfig
 	grpcConfig    config.GRPCConfig
 	httpConfig    config.HTTPConfig
@@ -31,11 +31,11 @@ type serviceProvaider struct {
 	userImpl *chat.Controller
 }
 
-func newServiceProvider() *serviceProvaider {
-	return &serviceProvaider{}
+func newServiceProvider() *serviceProvider {
+	return &serviceProvider{}
 }
 
-func (s *serviceProvaider) GetPGConfig() config.PGConfig {
+func (s *serviceProvider) GetPGConfig() config.PGConfig {
 	if s.pgConfig == nil {
 		cfg, err := config.NewPGConfig()
 		if err != nil {
@@ -48,7 +48,7 @@ func (s *serviceProvaider) GetPGConfig() config.PGConfig {
 	return s.pgConfig
 }
 
-func (s *serviceProvaider) GetGRPCConfig() config.GRPCConfig {
+func (s *serviceProvider) GetGRPCConfig() config.GRPCConfig {
 	if s.grpcConfig == nil {
 		cfg, err := config.NewGRPCConfig()
 		if err != nil {
@@ -61,7 +61,7 @@ func (s *serviceProvaider) GetGRPCConfig() config.GRPCConfig {
 	return s.grpcConfig
 }
 
-func (s *serviceProvaider) GetHTTPConfig() config.HTTPConfig {
+func (s *serviceProvider) GetHTTPConfig() config.HTTPConfig {
 	if s.httpConfig == nil {
 		cfg, err := config.NewHTTPConfig()
 		if err != nil {
@@ -74,7 +74,7 @@ func (s *serviceProvaider) GetHTTPConfig() config.HTTPConfig {
 	return s.httpConfig
 }
 
-func (s *serviceProvaider) GetSwaggerConfig() config.SwaggerConfig {
+func (s *serviceProvider) GetSwaggerConfig() config.SwaggerConfig {
 	if s.swaggerConfig == nil {
 		cfg, err := config.NewSwaggerConfig()
 		if err != nil {
@@ -87,7 +87,7 @@ func (s *serviceProvaider) GetSwaggerConfig() config.SwaggerConfig {
 	return s.swaggerConfig
 
 }
-func (s *serviceProvaider) GetDBClient(ctx context.Context) db.Client {
+func (s *serviceProvider) GetDBClient(ctx context.Context) db.Client {
 	if s.dbClient == nil {
 		cl, err := pg.New(ctx, s.GetPGConfig().DSN())
 		if err != nil {
@@ -105,7 +105,7 @@ func (s *serviceProvaider) GetDBClient(ctx context.Context) db.Client {
 	return s.dbClient
 }
 
-func (s *serviceProvaider) GetTxManager(ctx context.Context) db.TxManager {
+func (s *serviceProvider) GetTxManager(ctx context.Context) db.TxManager {
 	if s.txManager == nil {
 		s.txManager = transaction.NewTransactionManager(s.GetDBClient(ctx).DB())
 	}
@@ -113,7 +113,7 @@ func (s *serviceProvaider) GetTxManager(ctx context.Context) db.TxManager {
 	return s.txManager
 }
 
-func (s *serviceProvaider) GetUserRepository(ctx context.Context) userRepo.ChatRepository {
+func (s *serviceProvider) GetUserRepository(ctx context.Context) userRepo.ChatRepository {
 	if s.userRepository == nil {
 		s.userRepository = repoinf.NewRepository(s.GetDBClient(ctx))
 	}
@@ -121,7 +121,7 @@ func (s *serviceProvaider) GetUserRepository(ctx context.Context) userRepo.ChatR
 	return s.userRepository
 }
 
-func (s *serviceProvaider) GetUserService(ctx context.Context) userService.ChatService {
+func (s *serviceProvider) GetUserService(ctx context.Context) userService.ChatService {
 	if s.userService == nil {
 		s.userService = servinf.NewService(
 			s.GetUserRepository(ctx),
@@ -132,7 +132,7 @@ func (s *serviceProvaider) GetUserService(ctx context.Context) userService.ChatS
 	return s.userService
 }
 
-func (s *serviceProvaider) GetUserImpl(ctx context.Context) *chat.Controller {
+func (s *serviceProvider) GetUserImpl(ctx context.Context) *chat.Controller {
 	if s.userImpl == nil {
 		s.userImpl = chat.NewImplementation(s.GetUserService(ctx))
 	}

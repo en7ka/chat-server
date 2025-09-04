@@ -13,20 +13,20 @@ CREATE TABLE chat.chats(
 );
 
 CREATE TABLE chat.chat_members(
-                                  id BIGSERIAL PRIMARY KEY,
-                                  chat_id BIGINT NOT NULL REFERENCES chat.chats(id) ON DELETE CASCADE,
-                                  user_id BIGINT NOT NULL,
-                                  joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                  is_admin BOOLEAN DEFAULT FALSE,
-                                  UNIQUE (chat_id, user_id)
+                          id BIGSERIAL PRIMARY KEY,
+                          chat_id BIGINT NOT NULL REFERENCES chat.chats(id) ON DELETE CASCADE,
+                          user_id BIGINT NOT NULL,
+                          joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                          is_admin BOOLEAN DEFAULT FALSE,
+                          UNIQUE (chat_id, user_id)
 );
 
 CREATE TABLE chat.messages(
-                              id BIGSERIAL PRIMARY KEY,
-                              chat_id BIGINT NOT NULL REFERENCES chat.chats(id) ON DELETE CASCADE,
-                              from_user_id BIGINT NOT NULL,
-                              text TEXT NOT NULL,
-                              timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                          id BIGSERIAL PRIMARY KEY,
+                          chat_id BIGINT NOT NULL REFERENCES chat.chats(id) ON DELETE CASCADE,
+                          from_user_id BIGINT NOT NULL,
+                          text TEXT NOT NULL,
+                          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 -- +goose StatementEnd
 -- +goose Down

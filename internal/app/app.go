@@ -21,7 +21,7 @@ import (
 )
 
 type App struct {
-	serviceProvaider *serviceProvaider
+	serviceProvaider *serviceProvider
 	grpcServer       *grpc.Server
 	httpServer       *http.Server
 	swaggerServer    *http.Server
