@@ -54,6 +54,7 @@ service ChatAPI {
       body: "*"
     };
   };
+  rpc ConnectChat(ConnectChatRequest) returns (stream Message);
 }
 
 message CreateRequest {
@@ -66,6 +67,10 @@ message CreateRequest {
 
 message CreateResponse {
   int64 id = 1;
+}
+
+message ConnectChatRequest {
+  int64 id = 1 [(validate.rules).int64.gt = 0];
 }
 
 message DeleteRequest {
