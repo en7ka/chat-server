@@ -28,6 +28,7 @@ type ChatAPIClient interface {
 	SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
 	GetChat(ctx context.Context, in *GetChatRequest, opts ...grpc.CallOption) (*GetChatResponse, error)
 	AddMemberToChat(ctx context.Context, in *AddMemberToChatRequest, opts ...grpc.CallOption) (*AddMemberToChatResponse, error)
+	ConnectChat(ctx context.Context, in *ConnectChatRequest, opts ...grpc.CallOption) (ChatAPI_ConnectChatClient, error)
 }
 
 type chatAPIClient struct {
@@ -83,6 +84,38 @@ func (c *chatAPIClient) AddMemberToChat(ctx context.Context, in *AddMemberToChat
 	return out, nil
 }
 
+func (c *chatAPIClient) ConnectChat(ctx context.Context, in *ConnectChatRequest, opts ...grpc.CallOption) (ChatAPI_ConnectChatClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ChatAPI_ServiceDesc.Streams[0], "/api.chat_v1.ChatAPI/ConnectChat", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &chatAPIConnectChatClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type ChatAPI_ConnectChatClient interface {
+	Recv() (*Message, error)
+	grpc.ClientStream
+}
+
+type chatAPIConnectChatClient struct {
+	grpc.ClientStream
+}
+
+func (x *chatAPIConnectChatClient) Recv() (*Message, error) {
+	m := new(Message)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // ChatAPIServer is the server API for ChatAPI service.
 // All implementations must embed UnimplementedChatAPIServer
 // for forward compatibility
@@ -92,6 +125,7 @@ type ChatAPIServer interface {
 	SendMessage(context.Context, *SendMessageRequest) (*SendMessageResponse, error)
 	GetChat(context.Context, *GetChatRequest) (*GetChatResponse, error)
 	AddMemberToChat(context.Context, *AddMemberToChatRequest) (*AddMemberToChatResponse, error)
+	ConnectChat(*ConnectChatRequest, ChatAPI_ConnectChatServer) error
 	mustEmbedUnimplementedChatAPIServer()
 }
 
@@ -113,6 +147,9 @@ func (UnimplementedChatAPIServer) GetChat(context.Context, *GetChatRequest) (*Ge
 }
 func (UnimplementedChatAPIServer) AddMemberToChat(context.Context, *AddMemberToChatRequest) (*AddMemberToChatResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddMemberToChat not implemented")
+}
+func (UnimplementedChatAPIServer) ConnectChat(*ConnectChatRequest, ChatAPI_ConnectChatServer) error {
+	return status.Errorf(codes.Unimplemented, "method ConnectChat not implemented")
 }
 func (UnimplementedChatAPIServer) mustEmbedUnimplementedChatAPIServer() {}
 
@@ -217,6 +254,27 @@ func _ChatAPI_AddMemberToChat_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatAPI_ConnectChat_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ConnectChatRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ChatAPIServer).ConnectChat(m, &chatAPIConnectChatServer{stream})
+}
+
+type ChatAPI_ConnectChatServer interface {
+	Send(*Message) error
+	grpc.ServerStream
+}
+
+type chatAPIConnectChatServer struct {
+	grpc.ServerStream
+}
+
+func (x *chatAPIConnectChatServer) Send(m *Message) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // ChatAPI_ServiceDesc is the grpc.ServiceDesc for ChatAPI service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -245,6 +303,12 @@ var ChatAPI_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ChatAPI_AddMemberToChat_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "ConnectChat",
+			Handler:       _ChatAPI_ConnectChat_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "chat.proto",
 }
